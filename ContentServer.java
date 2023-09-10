@@ -12,22 +12,28 @@ public class ContentServer {
     private Socket socket;
     private DataInputStream serverResponse;
     private DataOutputStream contentServerRequests;
+    private String contentServerId; 
     private Integer lamportTime;
 
-    public ContentServer(String address, int port)
+    public ContentServer(String address, int port, int id)
     {
+        this.contentServerId = String.valueOf(id);
+        this.lamportTime = 0;
         try {
             // establish a connection
             socket = new Socket(address, port);
-            System.out.println("Connected");
+            System.out.println("ContentServer " + this.contentServerId + " has connected!");
 
             serverResponse = new DataInputStream(socket.getInputStream());
             contentServerRequests = new DataOutputStream(socket.getOutputStream());
-            sendPutRequest();
-            // Thread.sleep(1000);
-            // sendGetRequest();
-            // disconnect();
-            System.out.println(serverResponse.readUTF());
+            
+            for (int i = 0; i < 2; i++) {
+                sendPutRequest();
+                String temp = serverResponse.readUTF();
+                updateLamportTime(temp);
+                System.out.println("Server response: " + temp);
+                System.out.println("ContentServer " + Thread.currentThread().getName() + " lamport: " + this.lamportTime);
+            }
             disconnect();
         }
         catch (Exception e)
@@ -35,7 +41,14 @@ public class ContentServer {
             // catch & print out any errors
             System.err.println(e);
         }
+    }
 
+    public void updateLamportTime(String data)
+    {
+        JSONObject temp = new JSONObject(data);
+        this.lamportTime = Integer.parseInt(temp.getString("lamport-timestamp")) > this.lamportTime 
+        ? Integer.parseInt(temp.getString("lamport-timestamp")) + 1
+        : this.lamportTime + 1;
     }
     
 
@@ -60,14 +73,14 @@ public class ContentServer {
             Map<String, String> data = new HashMap<>();
             // place request type into map
             data.put("request-type", "PUT /weather.json HTTP/1.1");
-            data.put("content-server-id", "1");
-            data.put("user-agent", "ATOMClient/1/0");
+            data.put("client-id", "ContentServer " + contentServerId);
             data.put("content-type", "JSONSTRING");
             data.put("content-length", "500");
-            data.put("lamport-timestamp", "1");
-            data.put("data", new String(Files.readAllBytes(Paths.get("ContentServer.json"))));
+            data.put("lamport-timestamp", String.valueOf(this.lamportTime));
+            data.put("data", new String(Files.readAllBytes(Paths.get("ContentServer" + this.contentServerId + ".json"))));
             // send request to server and print response
             contentServerRequests.writeUTF(mapToString(data));
+            this.lamportTime += 1;
         } catch (Exception e) {
             System.err.println(e.toString());
         }
@@ -86,18 +99,13 @@ public class ContentServer {
             Map<String, String> data = new HashMap<>();
             // place request type into map
             data.put("request-type", "over");
-
+            data.put("lamport-timestamp", String.valueOf(this.lamportTime));
+            data.put("client-id", "ContentServer " + contentServerId);
+            
             contentServerRequests.writeUTF(mapToString(data));
-            System.out.println(serverResponse.readUTF());
 
         } catch (Exception e) {
             System.err.println(e.toString());
         }
-    }
-
-    public static void main(String args[])
-    {
-        // initialise the client 
-        ContentServer cs1 = new ContentServer("127.0.0.1", 3000);
     }
 }

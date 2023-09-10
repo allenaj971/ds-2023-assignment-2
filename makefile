@@ -8,7 +8,7 @@ compile: *.java
 
 # clean up compiled files
 clean: *.class
-	rm *.class -r
+	rm *.class -rf
 
 # run client 
 client: Client.class
@@ -16,11 +16,15 @@ client: Client.class
 
 # run aggregation server
 aggregation: AggregationServer.class
-	java -cp ./ AggregationServer
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ AggregationServer > Input.json
 
 # run content server 
 conserve: ContentServer.class
 	java -cp ./ ContentServer
+
+# run test
+test: Test.class
+	java -cp ./ Test > Output.json
 
 # kill process to ensure address is not in use
 # kill -9 <pid>

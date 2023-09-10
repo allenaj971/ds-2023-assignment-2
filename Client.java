@@ -9,22 +9,28 @@ public class Client {
     private Socket socket;
     private DataInputStream serverResponse;
     private DataOutputStream clientRequests;
+    private String clientId;
     private Integer lamportTime;
 
-    public Client(String address, int port)
+    public Client(String address, int port, String id)
     {
+        this.lamportTime = 0;
+        this.clientId = id;
         try {
             // establish a connection
             socket = new Socket(address, port);
-            System.out.println("Connected");
+            System.out.println("Client " + this.clientId.replace("Thread-", "") + " has connected!");
 
             serverResponse = new DataInputStream(socket.getInputStream());
             clientRequests = new DataOutputStream(socket.getOutputStream());
 
-            sendGetRequest();
-            // Thread.sleep(1000);
-            // sendGetRequest();
-            System.out.println(serverResponse.readUTF());
+            for (int i = 0; i < 2; i++) {
+                sendGetRequest();
+                String temp = serverResponse.readUTF();
+                updateLamportTime(temp);
+                System.out.println("Server response: " + temp);
+                System.out.println("Client " + Thread.currentThread().getName() + " lamport: " + this.lamportTime);
+            }
             disconnect();
             
         }
@@ -33,7 +39,22 @@ public class Client {
             // catch & print out any errors
             System.err.println(e);
         }
-        
+        finally
+        {
+            try {
+                socket.close();
+            } catch (Exception e) {
+                System.err.println(e.toString());
+            }
+        }
+    }
+
+    public void updateLamportTime(String data)
+    {
+        JSONObject temp = new JSONObject(data);
+        this.lamportTime = Integer.parseInt(temp.getString("lamport-timestamp")) > this.lamportTime 
+        ? Integer.parseInt(temp.getString("lamport-timestamp")) + 1
+        : this.lamportTime + 1;
     }
 
     public void sendGetRequest()
@@ -43,10 +64,8 @@ public class Client {
             Map<String, String> data = new HashMap<>();
             // place request type into map
             data.put("request-type", "GET /weather.json HTTP/1.1");
-            data.put("user-agent", "CLIENT");
-            data.put("content-type", "NONE");
-            data.put("content-length", "0");
-            data.put("lamport-timestamp", "2");
+            data.put("lamport-timestamp", String.valueOf(this.lamportTime));
+            data.put("client-id", "Client " + this.clientId);
             
             clientRequests.writeUTF(mapToString(data));
         } catch (Exception e) {
@@ -67,18 +86,14 @@ public class Client {
             Map<String, String> data = new HashMap<>();
             // place request type into map
             data.put("request-type", "over");
+            data.put("lamport-timestamp", String.valueOf(this.lamportTime));
+            data.put("client-id", "Client " + this.clientId);
 
             clientRequests.writeUTF(mapToString(data));
-            System.out.println(serverResponse.readUTF());
+            // System.out.println(serverResponse.readUTF());
 
         } catch (Exception e) {
             System.err.println(e.toString());
         }
-    }
- 
-    public static void main(String args[])
-    {
-        // initialise the client 
-        Client c1 = new Client("127.0.0.1", 3000);
     }
 }
