@@ -1,10 +1,10 @@
 #Key features list
-- Aggregation server stores 20 weather data updates: DONE
-- If multiple clients perform GET and PUT, then it must be done in the order of the lamport time
+- Aggregation server stores 20 weather data updates
+<!-- - If multiple clients perform GET and PUT, then it must be done in the order of the lamport time 
     1. each part must maintain a lamport time
     2. for each operation, send to FileReadWrite, and it will perform the GET
     or PUT based on lamport clock
-    3. increment lamport clock
+    3. increment lamport clock --> done
 - Remove content from a content server that it has not communicated with within the last 15 seconds
     1. perform heartbeat thing every 15 seconds by checking each socket every 15 seconds
 
