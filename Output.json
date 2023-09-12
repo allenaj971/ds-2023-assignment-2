@@ -1,11 +1,17 @@
-Client 0 has connected!
-ContentServer 1 has connected!
-ContentServer 2 has connected!
 Client 2 has connected!
+ContentServer 2 has connected!
+ContentServer 1 has connected!
+Client 0 has connected!
+Server response: {
+    "response-code": "200",
+    "lamport-timestamp": "102",
+    "response-type": "HTTP_SUCCESS",
+    "client-id": "ContentServer 2"
+}
 Server response: {
     "apparent_t": 9.6,
     "wind_spd_kmh": 15,
-    "lamport-timestamp": "87",
+    "lamport-timestamp": "103",
     "rel_hum": 60,
     "lon": 138.6,
     "dewpt": 5.7,
@@ -13,23 +19,28 @@ Server response: {
     "wind_dir": "S",
     "time_zone": "CST",
     "air_temp": 13.7,
-    "cloud": "rainy",
+    "cloud": "windy",
     "response-code": "200",
-    "local_date_time_full": "20230715160001",
-    "local_date_time": "15/04:20pm",
+    "local_date_time_full": "20230715160002",
+    "local_date_time": "15/04:21pm",
     "response-type": "HTTP_SUCCESS",
     "name": "Adelaide (West Terrace /  ngayirdapira)",
-    "id": "IDS60902",
+    "id": "IDS60903",
     "state": "SA",
     "press": 1023.9,
     "client-id": "Client Thread-0",
     "lat": -34.9
 }
-Client Thread-0 lamport: 88
+Server response: {
+    "response-code": "200",
+    "lamport-timestamp": "104",
+    "response-type": "HTTP_SUCCESS",
+    "client-id": "ContentServer 1"
+}
 Server response: {
     "apparent_t": 9.6,
     "wind_spd_kmh": 15,
-    "lamport-timestamp": "88",
+    "lamport-timestamp": "101",
     "rel_hum": 60,
     "lon": 138.6,
     "dewpt": 5.7,
@@ -49,11 +60,14 @@ Server response: {
     "client-id": "Client Thread-2",
     "lat": -34.9
 }
-Client Thread-2 lamport: 89
+Client Thread-0 lamport: 104
+Client Thread-2 lamport: 102
+ContentServer Thread-1 lamport: 105
+ContentServer Thread-3 lamport: 103
 Server response: {
     "apparent_t": 9.6,
     "wind_spd_kmh": 15,
-    "lamport-timestamp": "88",
+    "lamport-timestamp": "101",
     "rel_hum": 60,
     "lon": 138.6,
     "dewpt": 5.7,
@@ -73,18 +87,18 @@ Server response: {
     "client-id": "Client Thread-2",
     "lat": -34.9
 }
-Client Thread-2 lamport: 90
+Client Thread-2 lamport: 103
 Server response: {
     "response-code": "200",
-    "lamport-timestamp": "89",
+    "lamport-timestamp": "102",
     "response-type": "HTTP_SUCCESS",
-    "client-id": "ContentServer 1"
+    "client-id": "ContentServer 2"
 }
-ContentServer Thread-1 lamport: 90
+ContentServer Thread-3 lamport: 105
 Server response: {
     "apparent_t": 9.6,
     "wind_spd_kmh": 15,
-    "lamport-timestamp": "87",
+    "lamport-timestamp": "103",
     "rel_hum": 60,
     "lon": 138.6,
     "dewpt": 5.7,
@@ -92,37 +106,23 @@ Server response: {
     "wind_dir": "S",
     "time_zone": "CST",
     "air_temp": 13.7,
-    "cloud": "rainy",
+    "cloud": "windy",
     "response-code": "200",
-    "local_date_time_full": "20230715160001",
-    "local_date_time": "15/04:20pm",
+    "local_date_time_full": "20230715160002",
+    "local_date_time": "15/04:21pm",
     "response-type": "HTTP_SUCCESS",
     "name": "Adelaide (West Terrace /  ngayirdapira)",
-    "id": "IDS60902",
+    "id": "IDS60903",
     "state": "SA",
     "press": 1023.9,
     "client-id": "Client Thread-0",
     "lat": -34.9
 }
-Client Thread-0 lamport: 89
+Client Thread-0 lamport: 105
 Server response: {
     "response-code": "200",
-    "lamport-timestamp": "89",
+    "lamport-timestamp": "104",
     "response-type": "HTTP_SUCCESS",
     "client-id": "ContentServer 1"
 }
-ContentServer Thread-1 lamport: 92
-Server response: {
-    "response-code": "200",
-    "lamport-timestamp": "90",
-    "response-type": "HTTP_SUCCESS",
-    "client-id": "ContentServer 2"
-}
-ContentServer Thread-3 lamport: 91
-Server response: {
-    "response-code": "200",
-    "lamport-timestamp": "90",
-    "response-type": "HTTP_SUCCESS",
-    "client-id": "ContentServer 2"
-}
-ContentServer Thread-3 lamport: 93
+ContentServer Thread-1 lamport: 107

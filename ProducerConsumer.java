@@ -9,6 +9,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.io.*;
 import org.json.*;
 
+// 
 public class ProducerConsumer extends Thread {
     private PriorityQueue<JSONObject> requestQueue;
     private HashMap<String, JSONObject> responses; 
@@ -50,36 +51,35 @@ public class ProducerConsumer extends Thread {
 
             if(req.getString("lamport-timestamp").equals(""))
             {
-                responses.put(req.getString("client-id"), requestJSONgenerator(req,400));
+                this.responses.put(req.getString("client-id"), requestJSONgenerator(req,400));
             }
             else
             {
-
                 // check here for request type 
                 if(req.getString("request-type").equals("GET /weather.json HTTP/1.1"))
                 {
-                    responses.put(req.getString("client-id"), get(req));
+                    this.responses.put(req.getString("client-id"), get(req));
                 }
                 else if(req.getString("request-type").equals("PUT /weather.json HTTP/1.1"))
                 {
-                    responses.put(req.getString("client-id"), put(req));
+                    this.responses.put(req.getString("client-id"), put(req));
                 }
                 else if(req.getString("request-type").equals("over"))
                 {
-                    responses.put(req.getString("client-id"), requestJSONgenerator(req,-1));
+                    this.responses.put(req.getString("client-id"), requestJSONgenerator(req,-1));
                 }
                 // return invalid request type
                 else if(req.getString("request-type").equals(""))
                 {
-                    responses.put(req.getString("client-id"), requestJSONgenerator(req,400));
+                    this.responses.put(req.getString("client-id"), requestJSONgenerator(req,400));
                 }
                 else
                 {
-                    responses.put(req.getString("client-id"), requestJSONgenerator(req,500));
+                    this.responses.put(req.getString("client-id"), requestJSONgenerator(req,500));
                 }
             }
         }
-        System.out.println("Producer-Consumer Responses:\n" + responses);
+        System.out.println("Producer-Consumer Responses:\n" + this.responses);
         lock.unlock();
     }
     

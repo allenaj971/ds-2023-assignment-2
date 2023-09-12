@@ -6,15 +6,18 @@ import java.util.PriorityQueue;
 import java.io.*;
 import org.json.*;
 
+// This is the new connection class object that is created
+// in a new thread for each new connection to the aggregation server
 public class ThreadedConnection extends Thread {
     private Socket socket;
     private ProducerConsumer pc;
 
+    // here we pass in the new socket created in the new thread and pass
+    // the producer-consumer that is created initially. 
     public ThreadedConnection(Socket connectionSocket, ProducerConsumer prodCon)
     {
         this.socket = connectionSocket;
         this.pc = prodCon;
-        
     }
 
     public void run() 
