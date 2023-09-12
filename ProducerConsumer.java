@@ -30,9 +30,6 @@ public class ProducerConsumer extends Thread {
         System.out.println("Producer-Consumer Requests:\n" + requestQueue);
         lock.unlock();
 
-        // // perform all requests
-        // performRequest();
-
         return request.getString("client-id");
     }
     
@@ -55,27 +52,35 @@ public class ProducerConsumer extends Thread {
             }
             else
             {
-                // check here for request type 
+                // if request is GET, read file and perform GET request
                 if(req.getString("request-type").equals("GET /weather.json HTTP/1.1"))
                 {
                     this.responses.put(req.getString("client-id"), get(req));
                 }
+                // if request is PUT, write to WeatherData.json file and perform PUT request
                 else if(req.getString("request-type").equals("PUT /weather.json HTTP/1.1"))
                 {
-                    this.responses.put(req.getString("client-id"), put(req));
+                    // if data is empty then respond with code 500 for invalid request
+                    if(req.getString("data").equals(""))
+                    {
+                        this.responses.put(req.getString("client-id"), requestJSONgenerator(req,500));
+                    }
+                    // else perform PUT request
+                    else
+                    {
+                        this.responses.put(req.getString("client-id"), put(req));
+                    }
                 }
+                // if the connection is being terminated by content server or client
                 else if(req.getString("request-type").equals("over"))
                 {
+                    // send back response 200 disconnected 
                     this.responses.put(req.getString("client-id"), requestJSONgenerator(req,-1));
                 }
-                // return invalid request type
-                else if(req.getString("request-type").equals(""))
+                // send back a 400 error for invalid request type. 
+                else                     
                 {
                     this.responses.put(req.getString("client-id"), requestJSONgenerator(req,400));
-                }
-                else
-                {
-                    this.responses.put(req.getString("client-id"), requestJSONgenerator(req,500));
                 }
             }
         }

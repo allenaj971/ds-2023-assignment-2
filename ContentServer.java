@@ -73,6 +73,7 @@ public class ContentServer {
             Map<String, String> data = new HashMap<>();
             // place request type into map
             data.put("request-type", "PUT /weather.json HTTP/1.1");
+            data.put("user-agent:","ATOMClient/1/0");
             data.put("client-id", "ContentServer " + contentServerId);
             data.put("content-type", "JSONSTRING");
             data.put("content-length", "500");

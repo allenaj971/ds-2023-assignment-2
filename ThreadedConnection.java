@@ -20,12 +20,20 @@ public class ThreadedConnection extends Thread {
         this.pc = prodCon;
     }
 
+    // since the threadedConnection class extends Thread (since we 
+    // want to support multiple client and content server connections)
+    // we need to implement a run() method
     public void run() 
     {
+        // create a request reader to read requests from 
+        // content servers and clients
         DataInputStream requests = null;
+        // create a server response DataOutputStream to send AG 
+        // responses to clients and content servers
         DataOutputStream serverRes = null;
 
         try {
+            // 
             requests = new DataInputStream(this.socket.getInputStream());
             serverRes = new DataOutputStream(this.socket.getOutputStream());
 

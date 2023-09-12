@@ -12,40 +12,50 @@ public class Client {
     private String clientId;
     private Integer lamportTime;
 
-    public Client(String address, int port, String id)
+    public Client()
     {
         this.lamportTime = 0;
-        this.clientId = id;
+        this.clientId = Thread.currentThread().getName();
+    }
+
+    public static void main()
+    {
+        BufferedReader terminalinput = new BufferedReader(new InputStreamReader(System.in));
+
         try {
-            // establish a connection
-            socket = new Socket(address, port);
+            // read the command line to find the server name and port number (in URL format)
+            System.out.println("Please enter server address and port no with format servername:portnumber");
+            // Split the address and port number at the colon
+            String[] serverAdd = terminalinput.readLine().split(":");
+            // close the terminal input reader
+            terminalinput.close();
+
+            // establish a connection to the aggregation server
+            Socket socket = new Socket(serverAdd[0], Integer.valueOf(serverAdd[1]));
             System.out.println("Client " + this.clientId.replace("Thread-", "") + " has connected!");
 
-            serverResponse = new DataInputStream(socket.getInputStream());
-            clientRequests = new DataOutputStream(socket.getOutputStream());
+            // create a client request writer variable and server response reader
+            // variable
+            DataInputStream serverResponse = new DataInputStream(socket.getInputStream());
+            DataOutputStream clientRequests = new DataOutputStream(socket.getOutputStream());
 
-            for (int i = 0; i < 2; i++) {
+            for (int i = 0; i < 3; i++) {
                 sendGetRequest();
                 String temp = serverResponse.readUTF();
                 updateLamportTime(temp);
                 System.out.println("Server response: " + temp);
                 System.out.println("Client " + Thread.currentThread().getName() + " lamport: " + this.lamportTime);
+                Thread.sleep(1000);
             }
             disconnect();
             
         }
         catch (Exception e)
         {
-            // catch & print out any errors
-            System.err.println(e);
-        }
-        finally
-        {
-            try {
-                socket.close();
-            } catch (Exception e) {
-                System.err.println(e.toString());
-            }
+            // print error if client inputs 
+            // incorrect address and/or port no
+            // or if any other errors occur
+            System.err.println(e.toString());
         }
     }
 
@@ -57,7 +67,7 @@ public class Client {
         : this.lamportTime + 1;
     }
 
-    public void sendGetRequest()
+    public static void sendGetRequest()
     {   
         try {
             // create hashmap 

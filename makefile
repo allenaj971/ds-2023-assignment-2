@@ -16,7 +16,7 @@ client: Client.class
 
 # run aggregation server
 aggregation: AggregationServer.class
-	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ AggregationServer > Input.json
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ AggregationServer
 
 # run content server 
 conserve: ContentServer.class
