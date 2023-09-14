@@ -15,26 +15,41 @@ public class ContentServer {
     private String contentServerId; 
     private Integer lamportTime;
 
-    public ContentServer(String address, int port, int id)
+    public ContentServer()
     {
-        this.contentServerId = String.valueOf(id);
+        this.contentServerId = String.valueOf(Thread.currentThread().getName());
         this.lamportTime = 0;
+        BufferedReader terminalinput = new BufferedReader(new InputStreamReader(System.in));
         try {
+            // read the command line to find the server name and port number (in URL format)
+            System.out.println("ContentServer " + this.contentServerId + " : Please enter server address and port no with format servername:portnumber");
+            // Split the address and port number at the colon
+            String[] serverAdd = terminalinput.readLine().split(":");
+            
+
             // establish a connection
-            socket = new Socket(address, port);
-            System.out.println("ContentServer " + this.contentServerId + " has connected!");
+            socket = new Socket(serverAdd[0], Integer.valueOf(serverAdd[1]));
+            // System.out.println("ContentServer " + this.contentServerId + " has connected!");
 
             serverResponse = new DataInputStream(socket.getInputStream());
             contentServerRequests = new DataOutputStream(socket.getOutputStream());
             
-            for (int i = 0; i < 2; i++) {
-                sendPutRequest();
-                String temp = serverResponse.readUTF();
-                updateLamportTime(temp);
-                System.out.println("Server response: " + temp);
-                System.out.println("ContentServer " + Thread.currentThread().getName() + " lamport: " + this.lamportTime);
+            for (int i = 0; i < 3; i++) {
+                System.out.print("Please input file location of weather data: ");
+                String fileLoc = terminalinput.readLine();
+
+                if(fileLoc != null)
+                {
+                    sendPutRequest(fileLoc);
+                    String temp = serverResponse.readUTF();
+                    updateLamportTime(temp);
+                    System.out.println("Server response: " + temp);
+                    System.out.println("ContentServer " + Thread.currentThread().getName() + " lamport: " + this.lamportTime);
+                }
             }
             disconnect();
+            // close the terminal input reader
+            terminalinput.close();
         }
         catch (Exception e)
         {
@@ -52,7 +67,7 @@ public class ContentServer {
     }
     
 
-    public void sendPutRequest()
+    public void sendPutRequest(String fileLoc)
     {   
         // PUT /weather.json HTTP/1.1
         // User-Agent: ATOMClient/1/0
@@ -78,7 +93,7 @@ public class ContentServer {
             data.put("content-type", "JSONSTRING");
             data.put("content-length", "500");
             data.put("lamport-timestamp", String.valueOf(this.lamportTime));
-            data.put("data", new String(Files.readAllBytes(Paths.get("ContentServer" + this.contentServerId + ".json"))));
+            data.put("data", new String(Files.readAllBytes(Paths.get(fileLoc))));
             // send request to server and print response
             contentServerRequests.writeUTF(mapToString(data));
             this.lamportTime += 1;

@@ -26,6 +26,8 @@ conserve: ContentServer.class
 test: Test.class
 	java -cp ./ Test > Output.json
 
+test1: Test.class
+	java -cp ./ Test
 # kill process to ensure address is not in use
 # kill -9 <pid>
 # lsof -i:<pid>

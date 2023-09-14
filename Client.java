@@ -8,46 +8,43 @@ import org.json.*;
 public class Client {
     private Socket socket;
     private DataInputStream serverResponse;
-    private DataOutputStream clientRequests;
+    private PrintWriter clientRequests;
     private String clientId;
     private Integer lamportTime;
+    private String address;
 
     public Client()
     {
         this.lamportTime = 0;
         this.clientId = Thread.currentThread().getName();
-    }
-
-    public static void main()
-    {
+        // get terminal input for server address and port
         BufferedReader terminalinput = new BufferedReader(new InputStreamReader(System.in));
 
         try {
             // read the command line to find the server name and port number (in URL format)
-            System.out.println("Please enter server address and port no with format servername:portnumber");
+            System.out.println("Client: Please enter server address and port no with format servername:portnumber");
             // Split the address and port number at the colon
             String[] serverAdd = terminalinput.readLine().split(":");
             // close the terminal input reader
             terminalinput.close();
 
+            this.address = serverAdd[0];
+            this.address = serverAdd[1];
+
             // establish a connection to the aggregation server
-            Socket socket = new Socket(serverAdd[0], Integer.valueOf(serverAdd[1]));
+            socket = new Socket(serverAdd[0], Integer.valueOf(serverAdd[1]));
             System.out.println("Client " + this.clientId.replace("Thread-", "") + " has connected!");
 
-            // create a client request writer variable and server response reader
-            // variable
-            DataInputStream serverResponse = new DataInputStream(socket.getInputStream());
-            DataOutputStream clientRequests = new DataOutputStream(socket.getOutputStream());
+            // create a server response reader and client request writer
+            serverResponse = new DataInputStream(socket.getInputStream());
+            clientRequests = new PrintWriter(socket.getOutputStream());
 
-            for (int i = 0; i < 3; i++) {
-                sendGetRequest();
-                String temp = serverResponse.readUTF();
-                updateLamportTime(temp);
-                System.out.println("Server response: " + temp);
-                System.out.println("Client " + Thread.currentThread().getName() + " lamport: " + this.lamportTime);
-                Thread.sleep(1000);
-            }
-            disconnect();
+            sendGetRequest();
+            String temp = serverResponse.readLine();
+            // updateLamportTime(temp);
+            System.out.println("Server response: " + temp);
+            // System.out.println("Client " + Thread.currentThread().getName() + " lamport: " + this.lamportTime);
+            // disconnect();
             
         }
         catch (Exception e)
@@ -67,43 +64,42 @@ public class Client {
         : this.lamportTime + 1;
     }
 
-    public static void sendGetRequest()
+    public void sendGetRequest()
     {   
         try {
-            // create hashmap 
-            Map<String, String> data = new HashMap<>();
-            // place request type into map
-            data.put("request-type", "GET /weather.json HTTP/1.1");
-            data.put("lamport-timestamp", String.valueOf(this.lamportTime));
-            data.put("client-id", "Client " + this.clientId);
+            clientRequests.println("GET / HTTP/1.1 Host:" + this.address + "Accept: application/json 'Data': {'Lamport Timestamp:'" + 
+            String.valueOf(this.lamportTime) + 
+            "',{'Client id': 'Client " + this.clientId + "'}"
+            );
             
-            clientRequests.writeUTF(mapToString(data));
-        } catch (Exception e) {
-            System.err.println(e.toString());
-        }
-    }
-
-    public String mapToString(Map<String,String> data)
-    {
-        JSONObject obj = new JSONObject(data);
-        return obj.toString();
-    }
-
-    public void disconnect()
-    {
-        try {
-            // create hashmap 
-            Map<String, String> data = new HashMap<>();
-            // place request type into map
-            data.put("request-type", "over");
-            data.put("lamport-timestamp", String.valueOf(this.lamportTime));
-            data.put("client-id", "Client " + this.clientId);
-
-            clientRequests.writeUTF(mapToString(data));
-            // System.out.println(serverResponse.readUTF());
+            clientRequests.flush();
 
         } catch (Exception e) {
             System.err.println(e.toString());
         }
     }
+
+    // public String mapToString(Map<String,String> data)
+    // {
+    //     JSONObject obj = new JSONObject(data);
+    //     return obj.toString();
+    // }
+
+    // public void disconnect()
+    // {
+    //     try {
+    //         // create hashmap 
+    //         Map<String, String> data = new HashMap<>();
+    //         // place request type into map
+    //         data.put("request-type", "over");
+    //         data.put("lamport-timestamp", String.valueOf(this.lamportTime));
+    //         data.put("client-id", "Client " + this.clientId);
+
+    //         // clientRequests.writeUTF(mapToString(data));
+    //         // System.out.println(serverResponse.readUTF());
+
+    //     } catch (Exception e) {
+    //         System.err.println(e.toString());
+    //     }
+    // }
 }
