@@ -1,1 +1,12 @@
-Client: Please enter server address and port no with format servername:portnumber
+Client Thread-0 has connected!
+Client Thread-1 has connected!
+Client Thread-3 has connected!
+Client Thread-2 has connected!
+Server response: [HTTP/1.1 200 OK, lamport-timestamp: 1401, Content-Type: application/json]
+Client Thread-3 lamport: 0
+Server response: [HTTP/1.1 200 OK, lamport-timestamp: 1402, Content-Type: application/json]
+Client Thread-1 lamport: 0
+Server response: [HTTP/1.1 200 OK, lamport-timestamp: 1403, Content-Type: application/json]
+Client Thread-0 lamport: 0
+Server response: [HTTP/1.1 200 OK, lamport-timestamp: 1404, Content-Type: application/json]
+Client Thread-2 lamport: 0

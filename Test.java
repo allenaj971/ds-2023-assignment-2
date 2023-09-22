@@ -1,13 +1,13 @@
 public class Test {
-    public static void main(String args[])
-    {
-        new Thread(()->{
-            Client c = new Client();
-        }).start();
-        
-        // new Thread(()->{
-        //     ContentServer cs = new ContentServer();
-        // }).start();
+    public static void main(String args[]) {
+
+        // for (int i = 0; i < 3; i++) {
+
+        Client c = new Client();
+        c.start();
+        // }
+
+        ContentServer cs = new ContentServer();
+        cs.start();
     }
 }
-

@@ -8,7 +8,7 @@ compile: *.java
 
 # clean up compiled files
 clean: *.class
-	rm *.class -rf
+	rm *.class 
 
 # run client 
 client: Client.class
@@ -23,11 +23,11 @@ conserve: ContentServer.class
 	java -cp ./ ContentServer
 
 # run test
-test: Test.class
+test1: Test.class
 	java -cp ./ Test > Output.json
 
-test1: Test.class
-	java -cp ./ Test
+test: Test.class
+	java -cp ./ Test 
 # kill process to ensure address is not in use
 # kill -9 <pid>
 # lsof -i:<pid>

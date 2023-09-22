@@ -1,3 +1,4 @@
+
 // A Java program for a Client
 import java.io.*;
 import java.net.*;
@@ -6,120 +7,119 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Scanner;
+import java.util.Vector;
+
 import org.json.*;
 
-public class ContentServer {
+public class ContentServer extends Thread {
     private Socket socket;
     private DataInputStream serverResponse;
-    private DataOutputStream contentServerRequests;
-    private String contentServerId; 
+    private PrintWriter contentServerRequests;
+    private String contentServerId;
     private Integer lamportTime;
 
-    public ContentServer()
-    {
+    public ContentServer() {
         this.contentServerId = String.valueOf(Thread.currentThread().getName());
-        this.lamportTime = 0;
+        this.lamportTime = (int) Math.floor(Math.random() * (10 - 0 + 1) + 0);
+        ;
+    }
+
+    @Override
+    public void run(){
         BufferedReader terminalinput = new BufferedReader(new InputStreamReader(System.in));
         try {
-            // read the command line to find the server name and port number (in URL format)
-            System.out.println("ContentServer " + this.contentServerId + " : Please enter server address and port no with format servername:portnumber");
-            // Split the address and port number at the colon
-            String[] serverAdd = terminalinput.readLine().split(":");
-            
+            // // read the command line to find the server name and port number (in URL
+            // // format)
+            // System.out.println("Client: Please enter server address and port no with
+            // format servername:portnumber");
+            // // Split the address and port number at the colon
+            // String[] serverAdd = terminalinput.readLine().split(":");
+            // // close the terminal input reader
+            // terminalinput.close();
 
-            // establish a connection
-            socket = new Socket(serverAdd[0], Integer.valueOf(serverAdd[1]));
-            // System.out.println("ContentServer " + this.contentServerId + " has connected!");
+            // String address = serverAdd[0];
+            // Integer port = Integer.parseInt(serverAdd[1]);
 
-            serverResponse = new DataInputStream(socket.getInputStream());
-            contentServerRequests = new DataOutputStream(socket.getOutputStream());
-            
+            // // establish a connection to the aggregation server
+            // if (address != null && port != null) {
+            // socket = new Socket(address, port);
+            // } else {
             for (int i = 0; i < 3; i++) {
+                socket = new Socket("127.0.0.1", 3000);
+                // }
+
+                serverResponse = new DataInputStream(socket.getInputStream());
+                contentServerRequests = new PrintWriter(socket.getOutputStream());
+
                 System.out.print("Please input file location of weather data: ");
                 String fileLoc = terminalinput.readLine();
 
-                if(fileLoc != null)
-                {
-                    sendPutRequest(fileLoc);
-                    String temp = serverResponse.readUTF();
-                    updateLamportTime(temp);
-                    System.out.println("Server response: " + temp);
-                    System.out.println("ContentServer " + Thread.currentThread().getName() + " lamport: " + this.lamportTime);
+                sendPutRequest(fileLoc);
+                Vector<String> line = new Vector<>();
+                Scanner s = new Scanner(this.socket.getInputStream());
+                while (s.hasNextLine()) {
+                    line.add(s.nextLine());
                 }
+
+                updateLamportTime(line);
+                System.out.println("Server response for ContentServer " + this.contentServerId + " : " + line);
+                System.out.println(
+                        "ContentServer " + this.contentServerId + " lamport: " + this.lamportTime + "\r\n\r\n");
+
+                // terminalinput.close();
+                contentServerRequests.close();
+                serverResponse.close();
+                Thread.sleep(15000);
             }
-            disconnect();
-            // close the terminal input reader
-            terminalinput.close();
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             // catch & print out any errors
             System.err.println(e);
         }
     }
 
-    public void updateLamportTime(String data)
-    {
-        JSONObject temp = new JSONObject(data);
-        this.lamportTime = Integer.parseInt(temp.getString("lamport-timestamp")) > this.lamportTime 
-        ? Integer.parseInt(temp.getString("lamport-timestamp")) + 1
-        : this.lamportTime + 1;
+    public void updateLamportTime(Vector<String> data) {
+        String serverTime = "";
+        for (String string : data) {
+            if (string.contains("Lamport-Timestamp")) {
+                serverTime = string.split(":")[1].strip();
+                this.lamportTime = Math.max(Integer.parseInt(serverTime), this.lamportTime) + 1;
+            }
+        }
     }
-    
 
-    public void sendPutRequest(String fileLoc)
-    {   
+    public void sendPutRequest(String fileLoc) {
         // PUT /weather.json HTTP/1.1
         // User-Agent: ATOMClient/1/0
         // Content-Type: (You should work this one out)
         // Content-Length: (And this one too)
 
         // {
-        //     "id" : "IDS60901",
+        // "id" : "IDS60901",
         // ...
         // (data)
         // ...
-        //     "wind_spd_kt": 8
-        // }   
-        // create hashmap 
+        // "wind_spd_kt": 8
+        // }
+        // create hashmap
 
         // read weather data
         try {
-            Map<String, String> data = new HashMap<>();
+            String data = "";
             // place request type into map
-            data.put("request-type", "PUT /weather.json HTTP/1.1");
-            data.put("user-agent:","ATOMClient/1/0");
-            data.put("client-id", "ContentServer " + contentServerId);
-            data.put("content-type", "JSONSTRING");
-            data.put("content-length", "500");
-            data.put("lamport-timestamp", String.valueOf(this.lamportTime));
-            data.put("data", new String(Files.readAllBytes(Paths.get(fileLoc))));
+            String req = new String(Files.readAllBytes(Paths.get(fileLoc)));
+            // System.out.println(req);
+            data += "PUT /weather.json HTTP/1.1\n";
+            data += "User-Agent: ContentServer " + contentServerId + '\n';
+            data += "Lamport-Timestamp: " + String.valueOf(this.lamportTime) + '\n';
+            data += "Content-Type: application/json\n";
+            data += "Content-Length: " + req.length() + '\n';
+            // System.out.println(req);
+            data += "\r\n\r\n" + req.toString();
             // send request to server and print response
-            contentServerRequests.writeUTF(mapToString(data));
-            this.lamportTime += 1;
-        } catch (Exception e) {
-            System.err.println(e.toString());
-        }
-    }
-
-    public String mapToString(Map<String,String> data)
-    {
-        JSONObject obj = new JSONObject(data);
-        return obj.toString();
-    }
-
-    public void disconnect()
-    {
-        try {
-            // create hashmap 
-            Map<String, String> data = new HashMap<>();
-            // place request type into map
-            data.put("request-type", "over");
-            data.put("lamport-timestamp", String.valueOf(this.lamportTime));
-            data.put("client-id", "ContentServer " + contentServerId);
-            
-            contentServerRequests.writeUTF(mapToString(data));
-
+            // System.out.println(data);
+            contentServerRequests.println(data);
+            contentServerRequests.flush();
         } catch (Exception e) {
             System.err.println(e.toString());
         }

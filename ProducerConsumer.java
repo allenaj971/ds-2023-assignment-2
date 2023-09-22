@@ -5,227 +5,206 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Scanner;
+import java.util.Vector;
 import java.util.concurrent.locks.ReentrantLock;
 import java.io.*;
 import org.json.*;
 
 // 
 public class ProducerConsumer extends Thread {
-    private PriorityQueue<JSONObject> requestQueue;
-    private HashMap<String, JSONObject> responses; 
-    private ReentrantLock lock = new ReentrantLock(); 
+    private PriorityQueue<Vector<String>> requestQueue;
+    private HashMap<String, String> responses;
+    private ReentrantLock lock = new ReentrantLock();
 
-    public void run()
-    {
-        this.requestQueue = new PriorityQueue<>(new LamportComparator()); 
+    @Override
+    public void run() {
+        this.requestQueue = new PriorityQueue<>(new LamportComparator());
         this.responses = new HashMap<>();
+        this.lock = new ReentrantLock();
     }
 
-    public String addRequest(String req)
-    {
+    public void addRequest(Vector<String> req) {
         lock.lock();
-        JSONObject request = new JSONObject(req);
-        this.requestQueue.add(request);
 
-        System.out.println("Producer-Consumer Requests:\n" + requestQueue);
+        this.requestQueue.add(req);
+        if(requestQueue.size() >= 2)
+        {
+            System.out.println("Producer-Consumer Requests:\n" + requestQueue);
+        }
+
         lock.unlock();
-
-        return request.getString("client-id");
-    }
-    
-    public JSONObject getRequest(String id)
-    {
-        while(this.responses.get(id) == null){performRequest();}
-        return this.responses.get(id);
     }
 
-    private void performRequest()
-    {
-        lock.lock();
-        while(!requestQueue.isEmpty()){
-            // poll request
-            JSONObject req = requestQueue.poll();
-
-            if(req.getString("lamport-timestamp").equals(""))
-            {
-                this.responses.put(req.getString("client-id"), requestJSONgenerator(req,400));
+    public String getValue(Vector<String> request, String val) {
+        for (String string : request) {
+            if (string.contains(val)) {
+                String[] ans = string.split(":");
+                return ans[1];
             }
-            else
-            {
+        }
+        return null;
+    }
+
+    public String getData(Vector<String> request) {
+        for (String string : request) {
+            if (string.contains("{")) {
+                return string.strip();
+            }
+        }
+        return null;
+    }
+
+    public String getRequest(String id) {
+        while (this.responses.get(id) == null) {
+            performRequest();
+        }
+        String ans = this.responses.get(id);
+        this.responses.put(id, null);
+        return ans;
+    }
+
+    private void performRequest() {
+        lock.lock();
+        if (!requestQueue.isEmpty()) {
+            // poll request
+            Vector<String> req = this.requestQueue.poll();
+            if (getValue(req, "User-Agent") == null || getValue(req, "Lamport-Timestamp") == null) {
+                this.responses.put(getValue(req, "User-Agent"), requestJSONgenerator(400,
+                        "{'message':'No User-Agent or Lamport-Timestamp provided!'}", "Lamport-Timestamp: -1"));
+            } else {
                 // if request is GET, read file and perform GET request
-                if(req.getString("request-type").equals("GET /weather.json HTTP/1.1"))
-                {
-                    this.responses.put(req.getString("client-id"), get(req));
+                if (req.contains("GET /weather.json HTTP/1.1")) {
+                    this.responses.put(getValue(req, "User-Agent"), get(readLamportTime(req)));
                 }
                 // if request is PUT, write to WeatherData.json file and perform PUT request
-                else if(req.getString("request-type").equals("PUT /weather.json HTTP/1.1"))
-                {
-                    // if data is empty then respond with code 500 for invalid request
-                    if(req.getString("data").equals(""))
-                    {
-                        this.responses.put(req.getString("client-id"), requestJSONgenerator(req,500));
-                    }
-                    // else perform PUT request
-                    else
-                    {
-                        this.responses.put(req.getString("client-id"), put(req));
+                else if (req.contains("PUT /weather.json HTTP/1.1")) {
+                    // if data is empty then respond with code 400 for no data in request body
+                    if (getData(req) == null) {
+                        this.responses.put(getValue(req, "User-Agent"),
+                                requestJSONgenerator(400, "{'message': 'No data field in request body!'}",
+                                        readLamportTime(req)));
+                    } else {
+                        this.responses.put(getValue(req, "User-Agent"), put(req));
                     }
                 }
-                // if the connection is being terminated by content server or client
-                else if(req.getString("request-type").equals("over"))
-                {
-                    // send back response 200 disconnected 
-                    this.responses.put(req.getString("client-id"), requestJSONgenerator(req,-1));
-                }
-                // send back a 400 error for invalid request type. 
-                else                     
-                {
-                    this.responses.put(req.getString("client-id"), requestJSONgenerator(req,400));
+                // send back a 400 error for invalid request
+                else {
+                    this.responses.put(getValue(req, "User-Agent"),
+                            requestJSONgenerator(400, "{'message': 'Invalid request type'}", readLamportTime(req)));
                 }
             }
         }
-        System.out.println("Producer-Consumer Responses:\n" + this.responses);
+        // System.out.println("Producer-Consumer Responses:\n" + this.responses);
         lock.unlock();
     }
-    
-    private JSONObject get(JSONObject req)
-    {
-        try (FileReader fr = new FileReader("WeatherData.json"))
-        {
-            JSONTokener jsTokener = new JSONTokener(fr);
-            JSONObject weather = new JSONObject(jsTokener);
-    
-            weather.put("response-code" , "200");
-            weather.put("response-type", "HTTP_SUCCESS");
-            weather.put("client-id", req.getString("client-id"));
-            weather.put("lamport-timestamp", readLamportTime(req.getString("lamport-timestamp")));
-            
-            return weather;
-        } catch (Exception e) {
-            return requestJSONgenerator(req,404);
-        }
-    }
 
-    private JSONObject put(JSONObject jsonReq)
-    {
-        try {
-            File fr = new File("WeatherData.json");
-            // check if response format is correct
-            if(jsonReq.getString("data").length() != 0)
-            {
-                // no file exists, so create new one, write new data and return 201
-                if(fr.createNewFile())
-                {
-                    FileWriter fw = new FileWriter("WeatherData.json");
-                    fw.write(jsonReq.getString("data"));
-                    fw.close();
-                    return requestJSONgenerator(jsonReq, 201);
-                }
-                // else write new data to existing file
-                else
-                {
-                    FileWriter fw = new FileWriter("WeatherData.json");
-                    fw.write(jsonReq.getString("data"));
-                    fw.close();
-                    return requestJSONgenerator(jsonReq, 200);
-                }
-            }
-            else if (jsonReq.getString("data").length() == 0)
-            {
-                return requestJSONgenerator(jsonReq,204);
-            }
-            else
-            {
-                return requestJSONgenerator(jsonReq, 400);
-            }
-        } catch (Exception e) {
-            return new JSONObject(e.toString());
-        }
-    }
+    private String requestJSONgenerator(int code, String message, String newLamportTime) {
+        String response = "";
 
-    public JSONObject requestJSONgenerator(JSONObject req, int code)
-    {
-        JSONObject jsonRes = new JSONObject();
-        try {
-            jsonRes.put("lamport-timestamp", readLamportTime(req.getString("lamport-timestamp")));
-            jsonRes.put("client-id", req.getString("client-id"));
-        } catch (Exception e) {
-            System.err.println(e.toString());
-        }
         switch (code) {
             case 400:
-                jsonRes.put("response-type", "HTTP_BAD_REQUEST");
-                jsonRes.put("response-code", "400");
+                response += "HTTP/1.1 400 Bad Request\n";
                 break;
             case 204:
-                jsonRes.put("response-type", "HTTP_NO_CONTENT");
-                jsonRes.put("response-code", "204");
+                response += "HTTP/1.1 204 No Content\n";
                 break;
             case 201:
-                jsonRes.put("response-type", "HTTP_CREATED");
-                jsonRes.put("response-code", "201");
+                response += "HTTP/1.1 201 Created File\n";
                 break;
             case 500:
-                jsonRes.put("response-type", "HTTP_SERVER_FAILURE");
-                jsonRes.put("response-code", "500");
+                response += "HTTP/1.1 500 Server Failure\n";
                 break;
             case 200:
-                jsonRes.put("response-code", "200");
-                jsonRes.put("response-type", "HTTP_SUCCESS");
+                response += "HTTP/1.1 200 OK\n";
                 break;
             case 404:
-                jsonRes.put("response-code", "404");
-                jsonRes.put("response-type", "HTTP_NOT_FOUND");
-                break;
-            case -1:
-                jsonRes.put("response-code", "200");
-                jsonRes.put("response-type", "HTTP_DISCONNECTED");
-                break;
-            case 1:
-                jsonRes.put("response-code", "200");
-                jsonRes.put("response-type", "HTTP_CONNECTED");
+                response += "HTTP/1.1 404 Not Found\n";
                 break;
             default:
                 break;
         }
-        return jsonRes;
+        response += newLamportTime + "\nContent-Length: " + String.valueOf(message.length()) + "\nContent-Type: application/json\r\n\r\n" + message;
+        // System.out.println(response);
+        return response;
     }
-    
-    private String readLamportTime(String currentTime)
-    {
-        try (FileReader fr = new FileReader("AggregationServerLamport.json"))
-        {
+
+    private String get(String newLamportTime) {
+        try (FileReader fr = new FileReader("WeatherData.json")) {
             JSONTokener jsTokener = new JSONTokener(fr);
-            JSONObject data = new JSONObject(jsTokener);
-            Integer serverTime = Integer.parseInt(data.getString("AggregationServerLamport"));
-            Integer newTime = Math.max(serverTime, Integer.parseInt(currentTime)) + 1;
-            
-            data.put("AggregationServerLamport", String.valueOf(newTime));
-            FileWriter fw = new FileWriter("AggregationServerLamport.json");
-            fw.write(data.toString());
-            fw.close();
-            return String.valueOf(newTime);
+            JSONObject weather = new JSONObject(jsTokener);
+
+            return requestJSONgenerator(200, weather.toString(), newLamportTime);
         } catch (Exception e) {
-            return e.toString();
+            return requestJSONgenerator(404, "{'message': 'WeatherData.json not found!'}", newLamportTime);
         }
-    }   
+    }
+
+    private String put(Vector<String> data) {
+        String newLamportTime = readLamportTime(data);
+        try {
+            File fr = new File("WeatherData.json");
+            // check if response format is correct
+            if (getData(data).length() != 0) {
+                Boolean fileExists = fr.createNewFile();
+                FileWriter fw = new FileWriter("WeatherData.json");
+
+                fw.write(getData(data));
+                fw.close();
+
+                if (fileExists == false) {
+                    return requestJSONgenerator(200, "{'message': 'Successfully updated weather file!'}",
+                            newLamportTime);
+                } else {
+                    return requestJSONgenerator(201, "{'message': 'Successfully created WeatherData.json!'}",
+                            newLamportTime);
+                }
+            } else {
+                return requestJSONgenerator(204, "{'message': 'No content to update WeatherData.json'}",
+                        newLamportTime);
+            }
+        } catch (Exception e) {
+            return requestJSONgenerator(500,"{'message': 'WeatherData.json not found!'}" , newLamportTime);
+        }
+    }
+
+    private String readLamportTime(Vector<String> data) {
+        Integer newTime = Integer.parseInt(getValue(data, "Lamport-Timestamp").strip());
+        try (FileReader fr = new FileReader("AggregationServerLamport.json")) {
+            JSONTokener jsTokener = new JSONTokener(fr);
+            JSONObject serverTime = new JSONObject(jsTokener);
+            newTime = Math.max(Integer.parseInt(serverTime.getString("AggregationServerLamport")), newTime) + 1;
+
+            serverTime.put("AggregationServerLamport", String.valueOf(newTime));
+            FileWriter fw = new FileWriter("AggregationServerLamport.json");
+            fw.write(serverTime.toString());
+            fw.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "Lamport-Timestamp: " + String.valueOf(newTime);
+    }
 
 }
 
-class LamportComparator implements Comparator<JSONObject>
-{
-    @Override
-    public int compare(JSONObject a, JSONObject b)
-    {
-        Integer aVal = Integer.parseInt(a.getString("lamport-timestamp"));
-        Integer bVal = Integer.parseInt(b.getString("lamport-timestamp"));
+class LamportComparator implements Comparator<Vector<String>> {
 
-        if(aVal < bVal)
-        {
-            return -1;
+    private String getValue(Vector<String> request, String val) {
+        for (String string : request) {
+            if (string.contains(val)) {
+                String[] ans = string.split(":");
+                return ans[1];
+            }
         }
-        else if(aVal > bVal)
-        {
+        return null;
+    }
+
+    @Override
+    public int compare(Vector<String> a, Vector<String> b) {
+        Integer aVal = Integer.parseInt(getValue(a, "Lamport-Timestamp").strip());
+        Integer bVal = Integer.parseInt(getValue(b, "Lamport-Timestamp").strip());
+        if (aVal < bVal) {
+            return -1;
+        } else if (aVal > bVal) {
             return 1;
         }
         return 0;
