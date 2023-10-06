@@ -3,42 +3,82 @@ jsonjar: json-20230618.jar
 	jar xf json-20230618.jar
 
 # the compile command compiles all java files
-compile: *.java
+compile: 
 	javac -cp "./json-20230618.jar" -d ./ *.java 
 
 # clean up compiled files
 clean: *.class
 	rm *.class 
 
-# run client 
-client: Client.class
-	java -cp ./ Client
+# run tests
+test: 
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ Test
 
-# run aggregation server
-aggregation: AggregationServer.class
+# AUTOMATED TEST COMMANDS: BASIC FUNCTIONALITY
+# CLIENT PROCESSES START UP AND COMMUNICATE 
+client:
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ Client
+
+# AGGREGATION SERVER PROCESSES START UP AND COMMUNICATE
+aggregation:
 	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ AggregationServer
 
-# run content server 
-conserve: ContentServer.class
-	java -cp ./ ContentServer
+# CONTENT SERVER PROCESSES START UP AND COMMUNICATE
+conserve: 
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ ContentServer
 
-# run test
-test1: Test.class
-	java -cp ./ Test > Output.json
+# TEXT SENDING WORKS & PUT OPERATION WORKS FOR 1 CONTENTSERVER
+testputrequest:
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ PUTTest < putTestInput.txt
 
-test: Test.class
-	java -cp ./ Test 
-# kill process to ensure address is not in use
-# kill -9 <pid>
-# lsof -i:<pid>
+# GET OPERATION WORKS FOR MANY CLIENTS
+testgetrequest:
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ GETTest < getTestInput.txt
+
+# AGGREGATION EXPUNGING EXPIRED DATA WORKS (30s)
+testdataexpunge:
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ DataExpunge < dataExpungeInput.txt
+
+# RETRY FUNCTIONALITY WORKS
+# to see the retry functionality, you must run "make client" first and you will
+# see the retry prompt, then run "make aggregation" and it will connect to aggregation
+# server and it will connect
+
+# AUTOMATED TEST COMMANDS: FULL FUNCTIONALITY
+# Lamport clocks are implemented, you can see the requests and their lamport timestamps in the aggregation server
+# terminal and the output when you run 'make lamporttesting' in another terminal, and you will see that the responses
+# are sent back in lamport timestamp order
+lamporttesting:
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ LamportTesting < LamportTestingInput.txt
 	
+# Content servers are replicated and fault tolerant 
+# Content servers are fault tolerant (as they can retry if the aggregation server disconnects) as the 
+# retry functionality works  however, my implementaion is failing to save the contents, so it is not replicated
 
-# # client runs the client, takes input from the TestInput files
-# client: GETClient.class
-# 	java -cp ./ GETClient > Output.txt
+# Multiple, concurrent PUT and GET requests
+# you must run this command to concurrently run multiple GET clients and PUT requests
+multipleput:	
+	make testputrequest && make testgetrequest
 
-# # this compares the output of the program with the 2 expected outputs 
-# # the reason for 2 expected outputs is because the pop command in line 6
-# # of TestInput1.txt could print first or the isEmpty in line 6 of TestInput3.txt 
-# outputCompare: 
-# 	diff Output.txt ExpectedOutput1.txt & diff Output.txt ExpectedOutput2.txt
+# All error codes are implemented:
+# 200, 201 and 400 work
+# SUCCESS 201: works
+test201request:
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ Test201req < test201reqInput.txt
+
+# INVALID REQUEST TYPE 400: works
+test400request:
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ Test400req 
+
+# ERROR 500: does not work, gets hung up
+testinvalidjson:
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ InvalidJSON < InvalidJSONinput.txt
+
+# ERROR 204: does not work, gets hung up
+testemptyjson:
+	javac -cp "./json-20230618.jar" -d ./ *.java && java -cp ./ EmptyJSON < emptyJSONinput.txt
+
+
+
+
+

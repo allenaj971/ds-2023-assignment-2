@@ -2,8 +2,6 @@
 // A Java program for a Client
 import java.io.*;
 import java.net.*;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Scanner;
 import java.util.Vector;
 import org.json.*;
@@ -14,92 +12,129 @@ public class Client extends Thread {
     private PrintWriter clientRequests;
     private String clientId;
     private Integer lamportTime;
-    private String address;
-    private String port;
+    private Vector<String> response;
 
     public Client() {
-        this.lamportTime = 0;
-        this.clientId = Thread.currentThread().getName();
+        this.lamportTime = (int) Math.floor(Math.random() * (10 - 0 + 1) + 0);
+        this.clientId = String.valueOf(Thread.currentThread().getId());
+    }
+
+    public Vector<String> getResponse() {
+
+        return this.response;
     }
 
     @Override
     public void run() {
         // get terminal input for server address and port
         BufferedReader terminalinput = new BufferedReader(new InputStreamReader(System.in));
-
+        boolean sendRequest = true;
+        System.out.println("Hello Client " + clientId + "! Please enter address and port in the format address:port");
+        String address = null;
+        Integer port = null;
         try {
-            // // read the command line to find the server name and port number (in URL
-            // format)
-            // System.out.println("Client: Please enter server address and port no with
-            // format servername:portnumber");
-            // // Split the address and port number at the colon
-            // String[] serverAdd = terminalinput.readLine().split(":");
-            // // close the terminal input reader
-            // terminalinput.close();
+            // get the address and port from the terminal input
+            String temp = terminalinput.readLine();
+            if (temp != null) {
+                String[] connectionDetails = temp.split(":");
+                address = connectionDetails[0];
+                port = Integer.parseInt(connectionDetails[1]);
+            }
+        } catch (Exception e) {
+            System.err.println("Error with reading terminal input: " + e.toString());
+        }
 
-            // this.address = serverAdd[0];
-            // this.port = serverAdd[1];
-
-            // // establish a connection to the aggregation server
-            // if(this.address != null && this.port != null)
-            // {
-            // socket = new Socket(serverAdd[0], Integer.valueOf(serverAdd[1]));
-            // }
-            // else
-            // {
-            for (int i = 0; i < 3; i++) {
-                socket = new Socket("127.0.0.1", 3000);
+        while (sendRequest) {
+            try {
+                if (address == null || port == null) {
+                    socket = new Socket("127.0.0.1", 3000);
+                } else {
+                    socket = new Socket(address, port);
+                }
 
                 // create a server response reader and client request writer
                 this.serverResponse = new DataInputStream(socket.getInputStream());
                 this.clientRequests = new PrintWriter(socket.getOutputStream());
 
-                sendGetRequest();
+                System.out.println("Optional: Please enter the station id (leave empty if you want latest data):");
+                String stationId = terminalinput.readLine();
+                sendGetRequest(stationId);
 
-                String temp = "";
-                // Vector<String> line = new Vector<>();
+                Vector<String> line = new Vector<>();
                 Scanner s = new Scanner(this.socket.getInputStream());
                 while (s.hasNextLine()) {
-                    temp += s.nextLine() + '\n';
+                    line.add(s.nextLine());
                 }
 
-                System.out.println("Server response for Client " + this.clientId + " : " + temp);
-                System.out.println(
-                        "Client " + this.clientId + " lamport: " + this.lamportTime + "\r\n\r\n");
-                terminalinput.close();
+                updateLamportTime(line);
+                this.response = line;
+
+                System.out.println("Server response for Client " + this.clientId + " : " + line + "\r\n\r\n");
+
                 clientRequests.close();
                 serverResponse.close();
-                Thread.sleep(5000);
-            }
 
-        } catch (Exception e) {
-            // print error if client inputs
-            // incorrect address and/or port no
-            // or if any other errors occur
-            e.printStackTrace();
+                System.out.println(
+                        "Request successful. Would you like to send another GET request? ('true' for yes, 'false' for no)");
+
+                sendRequest = Boolean.parseBoolean(terminalinput.readLine());
+
+            } catch (Exception e) {
+                // catch & print out any when attempting to connect
+                System.err.println(
+                        "Client " + this.clientId + " - Failed to connect to aggregation server: "
+                                + e.toString()
+                                + "\nWould you like to try connecting again? ('true' for yes, 'false' for no)");
+                try {
+                    sendRequest = Boolean.parseBoolean(terminalinput.readLine());
+                } catch (Exception err) {
+                    err.printStackTrace();
+                }
+            }
         }
+
+        // try {
+        // terminalinput.close();
+        // } catch (Exception e) {
+        // System.err.println("Error closing terminal input: " + e.toString());
+        // }
+        System.out.println("Goodbye Client " + clientId + "!");
     }
 
-    public void updateLamportTime(Vector<String> data) {
+    private void updateLamportTime(Vector<String> data) {
         String serverTime = "";
         for (String string : data) {
-            if (string.contains("lamport-timestamp")) {
+            if (string.contains("Lamport-Timestamp")) {
                 serverTime = string.split(":")[1].strip();
                 this.lamportTime = Math.max(Integer.parseInt(serverTime), this.lamportTime) + 1;
             }
         }
     }
 
-    public void sendGetRequest() {
+    private void sendGetRequest(String stationId) {
         try {
-            this.clientRequests.println("GET /weather.json HTTP/1.1\nUser-Agent: Client " +
-                    this.clientId + "\nLamport-Timestamp: " +
-                    String.valueOf(this.lamportTime) + "\nContent-Type: application/json\nContent-Length: 0\n");
+            if (stationId == null || stationId.length() == 0) {
+                this.clientRequests.println("GET /weather.json HTTP/1.1\nUser-Agent: Client " +
+                        this.clientId + "\nLamport-Timestamp: " +
+                        String.valueOf(this.lamportTime)
+                        + "\nContent-Type: application/json\nContent-Length: 0\n");
+
+            } else {
+                this.clientRequests.println("GET /weather.json HTTP/1.1\nUser-Agent: Client " +
+                        this.clientId + "\nLamport-Timestamp: " +
+                        String.valueOf(this.lamportTime) + "\nStation-ID:" + stationId
+                        + "\nContent-Type: application/json\nContent-Length: 0\n");
+            }
 
             this.clientRequests.flush();
 
         } catch (Exception e) {
             System.err.println(e.toString());
         }
+    }
+
+    public static void main(String[] args) {
+        Client c = new Client();
+        c.start();
     }
 }
